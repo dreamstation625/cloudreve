@@ -262,7 +262,7 @@ func (service *CreateStoragePolicyService) Create(c *gin.Context) (*GetStoragePo
 	storagePolicyClient := dep.StoragePolicyClient()
 
 	if service.Policy.Type == types.PolicyTypeLocal {
-		service.Policy.DirNameRule = util.DataPath("uploads/{uid}/{path}")
+		service.Policy.DirNameRule = util.DataPath("cloudreve/{path}")
 	}
 
 	service.Policy.ID = 0

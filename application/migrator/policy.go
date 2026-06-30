@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/cloudreve/Cloudreve/v4/application/migrator/model"
 	"github.com/cloudreve/Cloudreve/v4/ent/node"
@@ -111,25 +110,11 @@ func (m *Migrator) migratePolicy() (map[int]bool, error) {
 			settings.ThumbGeneratorProxy = true
 		}
 
-		mustContain := []string{"{randomkey16}", "{randomkey8}", "{uuid}"}
-		hasRandomElement := false
-		for _, c := range mustContain {
-			if strings.Contains(policy.FileNameRule, c) {
-				hasRandomElement = true
-				break
-			}
-
-			if strings.Contains(policy.DirNameRule, c) {
-				hasRandomElement = true
-				break
-			}
+		if policy.DirNameRule == "" {
+			policy.DirNameRule = "cloudreve/{path}"
 		}
-		if !hasRandomElement {
-			if policy.DirNameRule == "" {
-				policy.DirNameRule = "uploads/{uid}/{path}"
-			}
-			policy.FileNameRule = "{uid}_{randomkey8}_{originname}"
-			m.l.Warning("Storage policy %q has no random element in file name rule, using default file name rule.", policy.Name)
+		if policy.FileNameRule == "" {
+			policy.FileNameRule = "{originname}"
 		}
 
 		stm := tx.StoragePolicy.Create().

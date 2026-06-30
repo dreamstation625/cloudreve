@@ -102,7 +102,7 @@ func migrateDefaultStoragePolicy(l logging.Logger, client *ent.Client, ctx conte
 	if _, err := client.StoragePolicy.Create().
 		SetName("Default storage policy").
 		SetType(types.PolicyTypeLocal).
-		SetDirNameRule(util.DataPath("uploads/{uid}/{path}")).
+		SetDirNameRule(util.DataPath("cloudreve/{path}")).
 		SetFileNameRule("{uid}_{randomkey8}_{originname}").
 		SetSettings(&types.PolicySetting{
 			ChunkSize:   25 << 20, // 25MB
