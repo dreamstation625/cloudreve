@@ -329,6 +329,11 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 					controllers.FromJSON[oauth.GrantService](oauth.GrantParamCtx{}),
 					controllers.GrantAppConsent,
 				)
+				oauthRouter.POST("consent/deny",
+					middleware.LoginRequired(),
+					controllers.FromJSON[oauth.GrantService](oauth.GrantParamCtx{}),
+					controllers.DenyAppConsent,
+				)
 				oauthRouter.POST("token",
 					controllers.FromForm[oauth.ExchangeTokenService](oauth.ExchangeTokenParamCtx{}),
 					controllers.ExchangeToken,
@@ -671,6 +676,11 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 				middleware.ValidateBatchFileCount(dep, explorer.DeleteFileParameterCtx{}),
 				controllers.Delete,
 			)
+			// Empty trash bin
+			file.DELETE("trash",
+				middleware.RequiredScopes(types.ScopeFilesWrite),
+				controllers.EmptyTrash,
+			)
 			// Force unlock
 			file.DELETE("lock",
 				middleware.RequiredScopes(types.ScopeFilesWrite),
@@ -923,6 +933,7 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 				tool := admin.Group("tool")
 				{
 					tool.GET("wopi",
+						middleware.RequiredScopes(types.ScopeAdminWrite),
 						controllers.FromQuery[adminsvc.FetchWOPIDiscoveryService](adminsvc.FetchWOPIDiscoveryParamCtx{}),
 						controllers.AdminFetchWopi,
 					)
@@ -931,6 +942,7 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 						controllers.FromJSON[adminsvc.ThumbGeneratorTestService](adminsvc.ThumbGeneratorTestParamCtx{}),
 						controllers.AdminTestThumbGenerator)
 					tool.POST("mail",
+						middleware.RequiredScopes(types.ScopeAdminWrite),
 						controllers.FromJSON[adminsvc.TestSMTPService](adminsvc.TestSMTPParamCtx{}),
 						controllers.AdminSendTestMail,
 					)
