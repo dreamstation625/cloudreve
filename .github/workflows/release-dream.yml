@@ -1,0 +1,113 @@
+name: Build and Release (dream-main)
+
+on:
+  push:
+    branches:
+      - dream-main
+    paths-ignore:
+      - VERSION
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-dream-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Checkout submodules over HTTPS
+        run: |
+          set -euo pipefail
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+      - name: Calculate version
+        id: version
+        run: |
+          set -euo pipefail
+          test -s VERSION
+          current=$(tr -d '[:space:]' < VERSION)
+          if [[ "$current" =~ ^(.+)-dream\.([0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}-dream"
+            next=$((10#${BASH_REMATCH[2]} + 1))
+          else
+            base="$current"
+            next=1
+          fi
+          version="${base}.${next}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version"
+
+      - name: Commit version bump
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "$VERSION" > VERSION
+          git add VERSION
+          git commit -m "chore(release): $VERSION [skip ci]"
+          git push origin HEAD:dream-main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          HUSKY: "0"
+        run: |
+          set -euo pipefail
+          npm install -g yarn@1.22.22
+          cd assets
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          yarn install --frozen-lockfile --network-timeout 1000000
+          yarn run build
+          cd ..
+          rm -f application/statics/assets.zip
+          zip -r application/statics/assets.zip assets/build
+          unzip -p application/statics/assets.zip assets/build/version.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build backend
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          commit=$(git rev-parse --short HEAD)
+          ldflags="-s -w -X github.com/cloudreve/Cloudreve/v4/application/constants.BackendVersion=$VERSION -X github.com/cloudreve/Cloudreve/v4/application/constants.LastCommit=$commit"
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -trimpath -o dist/cloudreve-linux-amd64 -ldflags "$ldflags"
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -a -trimpath -o dist/cloudreve-windows-amd64.exe -ldflags "$ldflags"
+          cd dist
+          sha256sum * > SHA256SUMS
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "v$VERSION" dist/* \
+            --title "v$VERSION" \
+            --generate-notes \
+            --target "$(git rev-parse HEAD)"

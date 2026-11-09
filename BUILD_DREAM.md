@@ -9,11 +9,25 @@ cloudreve 主仓库  -> git@github.com:dreamstation625/cloudreve.git
 assets 前端仓库   -> git@github.com:dreamstation625/cloudreve-frontend.git
 ```
 
-前后端都使用同名分支：
+常用分支：
 
 ```text
-dream-4.17.0
+dream-4.17.0   合并上游与定制开发的集成分支
+dream-main     发布分支，推送变化后自动构建并创建 Release
 ```
+
+前后端子模块仍使用同名分支 `dream-4.17.0`；发布分支只存在于主仓库。
+
+## dream-main 自动发布
+
+根目录 [`VERSION`](VERSION) 记录版本基线，初始为 `4.17.0-dream`。推送代码到 `dream-main` 后，[`.github/workflows/release-dream.yml`](.github/workflows/release-dream.yml) 会：
+
+1. 读取 `VERSION` 并递增构建号：`4.17.0-dream` → `4.17.0-dream.1` → `4.17.0-dream.2`，把新版本写回 `VERSION` 并提交（提交带 `[skip ci]`，不会再次触发发布）。
+2. 用同一版本构建前端（覆盖 `assets/package.json` 版本）并生成 `application/statics/assets.zip`。
+3. 用 `-ldflags` 把同一版本写入后端 `BackendVersion`，构建 `linux-amd64` 和 `windows-amd64`。
+4. 创建 `v<version>` 标签和 Release，附带两个二进制与 `SHA256SUMS`。
+
+只修改 `VERSION` 的提交不会触发发布；想更新版本基线时，直接把 `VERSION` 改成新基线（例如 `4.18.0-dream`），下次发布从 `.1` 开始。前端资源版本与后端 `BackendVersion` 由工作流强制保持一致，仍可用下面的手动步骤在本机构建核对。
 
 ## 版本号规则
 
