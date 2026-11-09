@@ -27,7 +27,7 @@ dream-main     发布分支，推送变化后自动构建并创建 Release
 3. 用 `-ldflags` 把同一版本写入后端 `BackendVersion`，构建 `linux-amd64` 和 `windows-amd64`。
 4. 创建 `v<version>` 标签和 Release，附带两个二进制与 `SHA256SUMS`。
 
-只修改 `VERSION` 的提交不会触发发布；想更新版本基线时，直接把 `VERSION` 改成新基线（例如 `4.18.0-dream`），下次发布从 `.1` 开始。前端资源版本与后端 `BackendVersion` 由工作流强制保持一致，仍可用下面的手动步骤在本机构建核对。
+也可在仓库 Actions 页面手动触发（`workflow_dispatch`）。只修改 `VERSION` 的提交不会触发发布；想更新版本基线时，直接把 `VERSION` 改成新基线（例如 `4.18.0-dream`），下次发布从 `.1` 开始。前端资源版本与后端 `BackendVersion` 由工作流强制保持一致，仍可用下面的手动步骤在本机构建核对。
 
 ## 版本号规则
 
